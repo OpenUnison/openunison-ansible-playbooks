@@ -1,0 +1,160 @@
+---
+- hosts: openunison
+  remote_user: root
+  tasks:
+  - name: install openjdk 8
+    yum: name=java-1.8.0-openjdk-devel.x86_64 state=latest
+
+  - name: install ntp
+    yum: name=ntp state=latest
+
+  - name: install unzip
+    yum: name=unzip state=latest
+
+  - name: create openunison group
+    group:
+      name: openunison
+      state: present
+
+  - name: create openunison user
+    user:
+      name: openunison
+      state: present
+      group: openunison
+      shell: /bin/bash
+
+  - name: create node_exporter group
+    group:
+      name: node_exporter
+      state: present
+
+  - name: create node_exporter user
+    user:
+      name: node_exporter
+      state: present
+      group: node_exporter
+      shell: /bin/bash
+
+  - name: create openunison config dir
+    file: path=/etc/openunison state=directory owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: create openunison base dir
+    file: path=/opt/openunison state=directory owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: create openunison war dir
+    file: path=/opt/openunison/war state=directory owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: create openunison amq dir
+    file: path=/opt/openunison/amq state=directory owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: create openunison quartz dir
+    file: path=/opt/openunison/quartz state=directory owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: create openunison logs dir
+    file: path=/opt/openunison/logs state=directory owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: create openunison bin bin
+    file: path=/opt/openunison/bin state=directory owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: create openunison work dir
+    file: path=/opt/openunison/work state=directory owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: Download runOpenUnisonOnUndertow.sh
+    command: "aws s3 cp s3://{{ s3_root }}/util/runOpenUnisonOnUndertow.sh /opt/openunison/bin/runOpenUnisonOnUndertow.sh"
+
+  - name: set permissions
+    file: path=/opt/openunison/bin/runOpenUnisonOnUndertow.sh state=file owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+
+  - name: Download startOpenUnisonOnUndertow.sh
+    command: "aws s3 cp s3://{{ s3_root }}/util/startOpenUnisonOnUndertow.sh /opt/openunison/bin/startOpenUnisonOnUndertow.sh"
+
+  - name: set permissions
+    file: path=/opt/openunison/bin/startOpenUnisonOnUndertow.sh state=file owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: Download stopOpenUnisonOnUndertow.sh
+    command: "aws s3 cp s3://{{ s3_root }}/util/stopOpenUnisonOnUndertow.sh /opt/openunison/bin/stopOpenUnisonOnUndertow.sh"
+
+  - name: set permissions
+    file: path=/opt/openunison/bin/stopOpenUnisonOnUndertow.sh state=file owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: Download openunison.service
+    command: "aws s3 cp s3://{{ s3_root }}/util/openunison.service /etc/systemd/system/openunison.service"
+
+  - name: set permissions
+    file: path=/etc/systemd/system/openunison.service state=file owner=openunison group=openunison mode=u+rw,u-x,g-rwx,o-rwx
+
+  - name: pull down keystore
+    command: "aws s3 cp s3://{{ s3_root }}/{{ env }}/p12/{{ openunison_role }}/unisonKeyStore.p12 /etc/openunison/unisonKeyStore.p12"
+
+  - name: set permissions on the keystore
+    file: path=/etc/openunison/unisonKeyStore.p12 state=file owner=openunison group=openunison mode=u+rw,u-x,g-rwx,o-rwx
+
+  - name: pull down openunison.yaml
+    command: "aws s3 cp s3://{{ s3_root }}/conf/{{ openunison_role }}/openunison.yaml /etc/openunison/openunison.yaml"
+
+  - name: set permissions on the yaml
+    file: path=/etc/openunison/openunison.yaml state=file owner=openunison group=openunison mode=u+rw,u-x,g-rwx,o-rwx
+
+  - name: pull down run_openunison_config.conf
+    command: "aws s3 cp s3://{{ s3_root }}/conf/run_openunison_config.conf /etc/openunison/run_openunison_config.conf"
+
+  - name: set permissions on the run_openunison_config.conf
+    file: path=/etc/openunison/run_openunison_config.conf state=file owner=openunison group=openunison mode=u+rw,u-x,g-rwx,o-rwx
+
+  - name: pull down openunison war
+    command: "aws s3 cp s3://{{ s3_root }}/{{ env }}/bin/openunison-{{ openunison_role }}-{{ openunison_version }}.war /opt/openunison/war/openunison.war"
+
+  - name: set permissions on the war
+    file: path=/opt/openunison/war/openunison.war state=file owner=openunison group=openunison mode=u+rw,u-x,g-rwx,o-rwx
+
+  - name: pull down ssm script
+    command: "aws s3 cp s3://{{ s3_root }}/util/export_ssm_values.py /opt/openunison/bin/export_ssm_values.py"
+
+  - name: set permissions for ssm script
+    file: path=/opt/openunison/bin/export_ssm_values.py state=file owner=openunison group=openunison mode=u+rwx,g-rwx,o-rwx
+
+  - name: install boto3
+    command: "pip install boto3"
+
+  - name: export ssm values to ou.env
+    command: "python /opt/openunison/bin/export_ssm_values.py /{{ param_root }}/{{ env }}/{{ openunison_role }} /etc/openunison/ou.env"
+
+  - name: update ou.env permissions
+    file: path=/etc/openunison/ou.env state=file owner=openunison group=openunison mode=u+rw,u-x,g-rwx,o-rwx
+
+
+  - name: update ntp systemd
+    systemd:
+      daemon_reload: yes
+      name: ntpd
+      enabled: yes
+      state: restarted
+
+  - name: update systemd
+    systemd:
+      daemon_reload: yes
+      name: openunison
+      enabled: yes
+      state: restarted
+
+  - name: add http
+    command: "/usr/bin/firewall-cmd --add-service=http --permanent"
+
+  - name: add https
+    command: "/usr/bin/firewall-cmd --add-service=https --permanent"
+
+  - name: add 8443
+    command: "/usr/bin/firewall-cmd --add-port=8443/tcp --permanent"
+
+  - name: add maquerade
+    command: "/usr/bin/firewall-cmd --add-masquerade --permanent"
+
+  - name: port forward 443->8443
+    command: "/usr/bin/firewall-cmd --add-forward-port=port=443:proto=tcp:toport=8443 --permanent"
+
+  - name: port forward 80->8080
+    command: "/usr/bin/firewall-cmd --add-forward-port=port=80:proto=tcp:toport=8080 --permanent"
+
+  - name: reload firewalld
+    command: "/usr/bin/firewall-cmd --reload"
